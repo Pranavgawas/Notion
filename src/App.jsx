@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react'
-import { useNotion } from './hooks/useNotion'
 import { notionService } from './services/notionService'
+import PageList from './components/PageList'
+import CreatePage from './components/CreatePage'
+import EditPage from './components/EditPage'
 import './App.css'
 
 function App() {
-  const { pages, loading, error, fetchDatabase } = useNotion()
+  const [activeTab, setActiveTab] = useState('list')
   const [serverStatus, setServerStatus] = useState('Checking...')
+  const [selectedPage, setSelectedPage] = useState(null)
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
 
   useEffect(() => {
     // Check server health on mount
@@ -14,73 +18,78 @@ function App() {
       .catch(() => setServerStatus('Not Connected'))
   }, [])
 
-  const handleFetchPages = () => {
-    fetchDatabase()
+  const handlePageCreated = () => {
+    setActiveTab('list')
+    setRefreshTrigger(prev => prev + 1)
+  }
+
+  const handlePageUpdated = () => {
+    setActiveTab('list')
+    setSelectedPage(null)
+    setRefreshTrigger(prev => prev + 1)
+  }
+
+  const handleEdit = (page) => {
+    setSelectedPage(page)
+    setActiveTab('edit')
+  }
+
+  const handlePageDeleted = () => {
+    setRefreshTrigger(prev => prev + 1)
   }
 
   return (
     <div className="app">
       <header>
-        <h1>🎯 Vite + React + Notion API</h1>
+        <h1>📝 Notion CRUD Manager</h1>
         <p className="server-status">
-          Server Status: <span className={serverStatus === 'OK' ? 'status-ok' : 'status-error'}>
+          Server: <span className={serverStatus === 'OK' ? 'status-ok' : 'status-error'}>
             {serverStatus}
           </span>
         </p>
       </header>
 
-      <main>
-        <div className="card">
-          <button onClick={handleFetchPages} disabled={loading}>
-            {loading ? 'Loading...' : 'Fetch Notion Database'}
+      <nav className="tabs">
+        <button 
+          className={activeTab === 'list' ? 'tab active' : 'tab'}
+          onClick={() => setActiveTab('list')}
+        >
+          📋 View Pages
+        </button>
+        <button 
+          className={activeTab === 'create' ? 'tab active' : 'tab'}
+          onClick={() => setActiveTab('create')}
+        >
+          ➕ Create Page
+        </button>
+        {selectedPage && (
+          <button 
+            className={activeTab === 'edit' ? 'tab active' : 'tab'}
+            onClick={() => setActiveTab('edit')}
+          >
+            ✏️ Edit Page
           </button>
-          
-          {error && (
-            <div className="error">
-              <p>Error: {error}</p>
-              <p className="hint">Make sure to configure your .env file with your Notion API credentials</p>
-            </div>
-          )}
+        )}
+      </nav>
 
-          {pages.length > 0 && (
-            <div className="pages-container">
-              <h2>Database Pages ({pages.length})</h2>
-              <div className="pages-list">
-                {pages.map((page) => (
-                  <div key={page.id} className="page-card">
-                    <h3>
-                      {page.properties?.Name?.title?.[0]?.plain_text || 
-                       page.properties?.title?.title?.[0]?.plain_text || 
-                       'Untitled'}
-                    </h3>
-                    <p className="page-id">ID: {page.id}</p>
-                    <p className="page-date">
-                      Created: {new Date(page.created_time).toLocaleDateString()}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {!loading && pages.length === 0 && !error && (
-            <div className="empty-state">
-              <p>Click the button above to fetch your Notion database pages</p>
-            </div>
-          )}
-        </div>
-
-        <div className="setup-instructions">
-          <h3>Setup Instructions:</h3>
-          <ol>
-            <li>Create a Notion integration at <a href="https://www.notion.so/my-integrations" target="_blank">notion.so/my-integrations</a></li>
-            <li>Copy the API key and paste it in the <code>.env</code> file</li>
-            <li>Share your database with the integration</li>
-            <li>Copy the database ID and paste it in the <code>.env</code> file</li>
-            <li>Start the backend server: <code>npm run server</code></li>
-            <li>Start the frontend: <code>npm run dev</code></li>
-          </ol>
-        </div>
+      <main>
+        {activeTab === 'list' && (
+          <PageList 
+            onEdit={handleEdit} 
+            onDelete={handlePageDeleted}
+            refreshTrigger={refreshTrigger}
+          />
+        )}
+        {activeTab === 'create' && (
+          <CreatePage onSuccess={handlePageCreated} />
+        )}
+        {activeTab === 'edit' && selectedPage && (
+          <EditPage 
+            page={selectedPage} 
+            onSuccess={handlePageUpdated}
+            onCancel={() => setActiveTab('list')}
+          />
+        )}
       </main>
     </div>
   )

@@ -1,9 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import pkg from '@notionhq/client';
-
-const { Client } = pkg;
+import { Client } from '@notionhq/client';
 
 dotenv.config();
 
@@ -146,6 +144,126 @@ app.get('/api/blocks/:blockId', async (req, res) => {
     console.error('Error fetching blocks:', error);
     res.status(500).json({ 
       error: 'Failed to fetch blocks', 
+      details: error.message 
+    });
+  }
+});
+
+// Append blocks to a page
+app.post('/api/blocks/:pageId/append', async (req, res) => {
+  try {
+    const { pageId } = req.params;
+    const { blocks } = req.body;
+
+    // Transform blocks to Notion format
+    const notionBlocks = blocks.map(block => {
+      const blockData = {};
+      
+      switch (block.type) {
+        case 'paragraph':
+          blockData.type = 'paragraph';
+          blockData.paragraph = {
+            rich_text: [{ text: { content: block.content || '' } }]
+          };
+          break;
+        case 'heading_1':
+          blockData.type = 'heading_1';
+          blockData.heading_1 = {
+            rich_text: [{ text: { content: block.content || '' } }]
+          };
+          break;
+        case 'heading_2':
+          blockData.type = 'heading_2';
+          blockData.heading_2 = {
+            rich_text: [{ text: { content: block.content || '' } }]
+          };
+          break;
+        case 'heading_3':
+          blockData.type = 'heading_3';
+          blockData.heading_3 = {
+            rich_text: [{ text: { content: block.content || '' } }]
+          };
+          break;
+        case 'image':
+          blockData.type = 'image';
+          blockData.image = {
+            type: 'external',
+            external: { url: block.content }
+          };
+          break;
+        case 'video':
+          blockData.type = 'video';
+          blockData.video = {
+            type: 'external',
+            external: { url: block.content }
+          };
+          break;
+        case 'bulleted_list':
+        case 'bulleted_list_item':
+          blockData.type = 'bulleted_list_item';
+          blockData.bulleted_list_item = {
+            rich_text: [{ text: { content: block.content || '' } }]
+          };
+          break;
+        default:
+          return null;
+      }
+      
+      return blockData;
+    }).filter(block => block !== null);
+
+    const response = await notion.blocks.children.append({
+      block_id: pageId,
+      children: notionBlocks,
+    });
+
+    res.json(response);
+  } catch (error) {
+    console.error('Error appending blocks:', error);
+    res.status(500).json({ 
+      error: 'Failed to append blocks', 
+      details: error.message 
+    });
+  }
+});
+
+// Delete a block
+app.delete('/api/blocks/:blockId', async (req, res) => {
+  try {
+    const { blockId } = req.params;
+
+    const response = await notion.blocks.delete({
+      block_id: blockId,
+    });
+
+    res.json(response);
+  } catch (error) {
+    console.error('Error deleting block:', error);
+    res.status(500).json({ 
+      error: 'Failed to delete block', 
+      details: error.message 
+    });
+  }
+});
+
+// Update a block
+app.patch('/api/blocks/:blockId', async (req, res) => {
+  try {
+    const { blockId } = req.params;
+    const { content } = req.body;
+
+    const response = await notion.blocks.update({
+      block_id: blockId,
+      [content.type]: {
+        rich_text: [{ text: { content: content.text } }]
+      }
+    });
+
+    res.json(response);
+  } catch (error) {
+    console.error('Error updating block:', error);
+    res.status(500).json({ 
+      error: 'Failed to update block', 
       details: error.message 
     });
   }

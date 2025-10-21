@@ -1,7 +1,5 @@
-// Use Vercel serverless functions in production, local server in development
-const API_BASE_URL = import.meta.env.PROD 
-  ? '/api'  // Vercel serverless functions
-  : 'http://localhost:3001/api';  // Local Express server
+// Use Vercel serverless functions in production, Vite proxy in development
+const API_BASE_URL = '/api';  // Vite proxy will forward to localhost:3001 in development
 
 export const notionService = {
   // Get all pages from the database
@@ -24,7 +22,7 @@ export const notionService = {
 
   // Create a new page
   async createPage(properties) {
-    const response = await fetch(`${API_BASE_URL}/page/create`, {
+    const response = await fetch(`${API_BASE_URL}/page`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -40,11 +38,11 @@ export const notionService = {
   // Update a page
   async updatePage(pageId, properties) {
     const response = await fetch(`${API_BASE_URL}/page/${pageId}`, {
-      method: 'POST',
+      method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ properties, action: 'update' }),
+      body: JSON.stringify({ properties }),
     });
     if (!response.ok) {
       throw new Error('Failed to update page');
@@ -55,11 +53,10 @@ export const notionService = {
   // Delete (archive) a page
   async deletePage(pageId) {
     const response = await fetch(`${API_BASE_URL}/page/${pageId}`, {
-      method: 'POST',
+      method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ action: 'delete' }),
     });
     if (!response.ok) {
       throw new Error('Failed to delete page');
@@ -72,6 +69,50 @@ export const notionService = {
     const response = await fetch(`${API_BASE_URL}/blocks/${blockId}`);
     if (!response.ok) {
       throw new Error('Failed to fetch blocks');
+    }
+    return response.json();
+  },
+
+  // Append blocks to a page
+  async appendBlocks(pageId, blocks) {
+    const response = await fetch(`${API_BASE_URL}/blocks/${pageId}/append`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ blocks }),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to append blocks');
+    }
+    return response.json();
+  },
+
+  // Delete a block
+  async deleteBlock(blockId) {
+    const response = await fetch(`${API_BASE_URL}/blocks/${blockId}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    if (!response.ok) {
+      throw new Error('Failed to delete block');
+    }
+    return response.json();
+  },
+
+  // Update a block
+  async updateBlock(blockId, content) {
+    const response = await fetch(`${API_BASE_URL}/blocks/${blockId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ content }),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to update block');
     }
     return response.json();
   },
